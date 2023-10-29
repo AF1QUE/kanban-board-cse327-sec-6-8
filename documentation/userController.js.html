@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: userController.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: userController.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>const User = require("../models/userModel");
+const jwt = require("jsonwebtoken");
+
+
+/**
+ * Handles errors and maps them to error messages.
+ * @function
+ * @param {Error} err - The error to handle.
+ * @returns {Object} An object containing error messages.
+ */
+
+
+const handleErrors = (err) => {
+  let errors = { name: "", email: "", password: "" };
+
+  /** 
+   * incorrect email
+   */ 
+
+  if (err.message === "Incorrect email") {
+    errors.email = "The email entered is not registered";
+  }
+  /** 
+   * incorrect password
+   */ 
+
+  if (err.message === "Incorrect password") {
+    errors.password = "The password is incorrect";
+  }
+
+  if (err.message.includes("User validation failed")) {
+    Object.values(err.errors).forEach(({ properties }) => {
+      errors[properties.path] = properties.message;
+    });
+  }
+
+  return errors;
+};
+
+const maxAge = 3 * 24 * 60 * 60;
+
+
+/**
+ * Creates a JWT token with a specified user ID.
+ * @function
+ * @param {string} id - The user's ID.
+ * @returns {string} A JWT token.
+ */
+
+const createToken = (id) => {
+  return jwt.sign({ id }, "my-secret-key", {
+    expiresIn: maxAge,
+  });
+};
+
+/**
+ * Register a new user.
+ * @function
+ * @async
+ * @param {express.Request} req - The Express request object.
+ * @param {express.Response} res - The Express response object.
+ */
+
+exports.registerUser = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+/**
+ *Check if the user already exists
+ */
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+
+  /**
+  * Create a new user
+  */
+
+    const user = new User({
+      name,
+      email,
+      password,
+    });
+
+    await user.save();
+
+    const token = createToken(user._id);
+    res.cookie("jwt", token, { httpOnly: true, maxAge: maxAge * 1000 });
+
+    res.status(201).json({ message: "User registered successfully", user });
+  } catch (error) {
+    const errors = handleErrors(error);
+    res.status(500).json({ errors });
+  }
+};
+
+/**
+ * Login user.
+ * @function
+ * @async
+ * @param {express.Request} req - The Express request object.
+ * @param {express.Response} res - The Express response object.
+ */
+
+exports.loginUser = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await User.login(email, password);
+    const token = createToken(user._id);
+    res.cookie("jwt", token, { httpOnly: true, maxAge: maxAge * 1000 });
+    res.status(200).json({
+      message: "User login successful!",
+      user: { id: user._id },
+    }); 
+  } catch (err) {
+    const errors = handleErrors(err);
+    res.status(400).json({ errors });
+  }
+};
+
+/**
+ * Logout user.
+ * @function
+ * @async
+ * @param {express.Request} req - The Express request object.
+ * @param {express.Response} res - The Express response object.
+ */
+exports.logoutUser = async (req, res) => {
+  res.cookie("jwt", "", { maxAge: 1 });
+  res.status(200).json({ message: "Successfully logged out!" });
+};
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#createList">createList</a></li><li><a href="global.html#createToken">createToken</a></li><li><a href="global.html#createWorkspace">createWorkspace</a></li><li><a href="global.html#deleteList">deleteList</a></li><li><a href="global.html#deleteWorkspace">deleteWorkspace</a></li><li><a href="global.html#getAllLists">getAllLists</a></li><li><a href="global.html#getAllWorkspaces">getAllWorkspaces</a></li><li><a href="global.html#getListById">getListById</a></li><li><a href="global.html#getListsAndTasksByWorkspaceId">getListsAndTasksByWorkspaceId</a></li><li><a href="global.html#getWorkspaceById">getWorkspaceById</a></li><li><a href="global.html#handleErrors">handleErrors</a></li><li><a href="global.html#loginUser">loginUser</a></li><li><a href="global.html#logoutUser">logoutUser</a></li><li><a href="global.html#registerUser">registerUser</a></li><li><a href="global.html#updateList">updateList</a></li><li><a href="global.html#updateWorkspace">updateWorkspace</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sat Nov 04 2023 22:35:57 GMT+0600 (Bangladesh Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
